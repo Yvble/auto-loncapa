@@ -1,4 +1,4 @@
-# Automatic LON-CAPA 
+# Automatic LON-CAPA AutoSolve
 
 This Chrome extension extracts the visible problem text and images, opens ChatGPT and gets the answer then inputs the answer into LON-CAPA.
 
