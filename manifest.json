@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Auto LON-CAPA Study Helper",
+  "version": "0.1.0",
+  "description": "LON-CAPA study helper: extracts questions and images and pre-fills ChatGPT (no auto-send).",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": [
+    "file:///*",
+    "http://*/*",
+    "https://*/*",
+    "https://chatgpt.com/*"
+  ],
+  "background": {
+    "service_worker": "background/background.js"
+  },
+  "action": {
+    "default_title": "Auto LON-CAPA",
+    "default_popup": "popup/popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["file:///*", "http://*/*", "https://*/*"],
+      "js": ["content-scripts/webwork-local.js"]
+    },
+    {
+      "matches": ["https://chatgpt.com/*"],
+      "js": ["content-scripts/chatgpt.js"]
+    }
+  ]
+}

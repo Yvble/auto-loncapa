@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Auto LON-CAPA</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div class="logo">AL</div>
+        <div>
+          <h1>Auto LON-CAPA</h1>
+          <div class="version">v<span id="current-version">0.0.0</span></div>
+        </div>
+      </header>
+
+      <div class="settings-section">
+        <h2>Behavior</h2>
+        <p>Control how answers are filled after ChatGPT responds.</p>
+
+        <label class="toggle">
+          <input type="checkbox" id="autoSubmit" />
+          <span>Auto submit after fill</span>
+        </label>
+        <div class="hint">Clicks the LON-CAPA “Submit Answers” button.</div>
+      </div>
+
+      <div class="settings-section">
+        <h2>Info</h2>
+        <p>
+          This extension extracts LON-CAPA problems, sends them to ChatGPT, and
+          fills your answers in LON-CAPA format.
+        </p>
+        <ul class="tips">
+          <li>Open a LON-CAPA problem before clicking “Send to ChatGPT”.</li>
+          <li>Always review answers before submitting.</li>
+        </ul>
+      </div>
+
+      <footer>
+        <span>Auto LON-CAPA</span>
+        <span class="status" id="save-status">Settings saved</span>
+      </footer>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
+
