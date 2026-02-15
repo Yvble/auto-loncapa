@@ -1,4 +1,4 @@
-<!doctype html>
+Ôªø<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -18,13 +18,22 @@
 
       <div class="settings-section">
         <h2>Behavior</h2>
-        <p>Control how answers are filled after ChatGPT responds.</p>
+        <p>Control how ChatGPT is used for this extension.</p>
+
+        <label class="field">
+          <span class="field-label">Mode</span>
+          <select id="behaviorMode">
+            <option value="assist">Assist Mode (auto-fill enabled)</option>
+            <option value="study">Study Mode (no auto-fill)</option>
+          </select>
+        </label>
+        <div class="hint">Study Mode sends a learning prompt and does not fill answers.</div>
 
         <label class="toggle">
           <input type="checkbox" id="autoSubmit" />
           <span>Auto submit after fill</span>
         </label>
-        <div class="hint">Clicks the LON-CAPA ìSubmit Answersî button.</div>
+        <div class="hint">Clicks the LON-CAPA ‚ÄúSubmit Answers‚Äù button.</div>
       </div>
 
       <div class="settings-section">
@@ -34,7 +43,7 @@
           fills your answers in LON-CAPA format.
         </p>
         <ul class="tips">
-          <li>Open a LON-CAPA problem before clicking ìSend to ChatGPTî.</li>
+          <li>Open a LON-CAPA problem before clicking ‚ÄúSend to ChatGPT‚Äù.</li>
           <li>Always review answers before submitting.</li>
         </ul>
       </div>
@@ -48,4 +57,5 @@
     <script src="popup.js"></script>
   </body>
 </html>
+
 

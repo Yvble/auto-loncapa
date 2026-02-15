@@ -1,8 +1,10 @@
-const DEFAULTS = {
+﻿const DEFAULTS = {
+  mode: "assist",
   autoSubmit: false,
 };
 
 const elements = {
+  mode: document.getElementById("behaviorMode"),
   autoSubmit: document.getElementById("autoSubmit"),
   currentVersion: document.getElementById("current-version"),
   saveStatus: document.getElementById("save-status"),
@@ -11,6 +13,32 @@ const elements = {
 function setStatus(text) {
   if (!elements.saveStatus) return;
   elements.saveStatus.textContent = text;
+}
+
+function isStudyMode() {
+  return elements.mode?.value === "study";
+}
+
+function syncBehaviorControls() {
+  if (!elements.autoSubmit) return;
+
+  const disableAutoSubmit = isStudyMode();
+  const toggleLabel = elements.autoSubmit.closest(".toggle");
+
+  elements.autoSubmit.disabled = disableAutoSubmit;
+  if (toggleLabel) {
+    toggleLabel.classList.toggle("disabled", disableAutoSubmit);
+  }
+}
+
+function saveSettings(update, statusText = "Settings saved") {
+  chrome.storage.sync.set(update, () => {
+    if (chrome.runtime.lastError) {
+      setStatus("Save failed");
+      return;
+    }
+    setStatus(statusText);
+  });
 }
 
 function loadSettings() {
@@ -25,25 +53,33 @@ function loadSettings() {
       return;
     }
 
+    if (elements.mode) {
+      elements.mode.value = settings.mode === "study" ? "study" : "assist";
+    }
+
     if (elements.autoSubmit) {
       elements.autoSubmit.checked = Boolean(settings.autoSubmit);
     }
+
+    syncBehaviorControls();
   });
 }
 
 function bindEvents() {
-  if (!elements.autoSubmit) return;
-
-  elements.autoSubmit.addEventListener("change", (event) => {
-    const enabled = Boolean(event.target.checked);
-    chrome.storage.sync.set({ autoSubmit: enabled }, () => {
-      if (chrome.runtime.lastError) {
-        setStatus("Save failed");
-        return;
-      }
-      setStatus("Settings saved");
+  if (elements.mode) {
+    elements.mode.addEventListener("change", (event) => {
+      const mode = event.target.value === "study" ? "study" : "assist";
+      syncBehaviorControls();
+      saveSettings({ mode }, `Mode set to ${mode === "study" ? "Study" : "Assist"}`);
     });
-  });
+  }
+
+  if (elements.autoSubmit) {
+    elements.autoSubmit.addEventListener("change", (event) => {
+      const enabled = Boolean(event.target.checked);
+      saveSettings({ autoSubmit: enabled });
+    });
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {

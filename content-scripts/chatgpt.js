@@ -1,4 +1,4 @@
-let hasResponded = false;
+﻿let hasResponded = false;
 let messageCountAtQuestion = 0;
 let observationStartTime = 0;
 let observationTimeout = null;
@@ -38,25 +38,34 @@ function resetObservation() {
   }
 }
 
-async function insertQuestion(questionData) {
-  const { type, question, options, imageData, imageAlt, hasImage } = questionData;
+function buildPromptText(questionData, mode) {
+  const { type, question, options } = questionData;
   let text = `Type: ${type}\nQuestion: ${question}`;
 
-  if (type === "matching") {
+  if (type === "matching" && options?.prompts && options?.choices) {
     text +=
       "\nPrompts:\n" +
       options.prompts.map((prompt, i) => `${i + 1}. ${prompt}`).join("\n");
     text +=
       "\nChoices:\n" +
       options.choices.map((choice, i) => `${i + 1}. ${choice}`).join("\n");
+  } else if (options && Array.isArray(options) && options.length > 0) {
+    text += "\nOptions:\n" + options.map((opt, i) => `${i + 1}. ${opt}`).join("\n");
+  }
+
+  if (mode === "study") {
+    text +=
+      "\n\nStudy Mode: Act like a tutor and teach me how to solve this problem step by step. If it is a conceptual problem, clearly explain the underlying concept in simple terms and why it applies. If it is an equation-based problem, show every step of the math.";
+    return text;
+  }
+
+  if (type === "matching") {
     text +=
       "\n\nPlease match each prompt with the correct choice. Format your answer as an array where each element is 'Prompt -> Choice'.";
   } else if (type === "fill_in_the_blank") {
     text +=
       "\n\nThis is a fill in the blank question. If there are multiple blanks, provide answers as an array in order of appearance. For a single blank, you can provide a string.";
-  } else if (options && options.length > 0) {
-    text +=
-      "\nOptions:\n" + options.map((opt, i) => `${i + 1}. ${opt}`).join("\n");
+  } else if (options && Array.isArray(options) && options.length > 0) {
     text +=
       "\n\nIMPORTANT: Your answer must EXACTLY match one of the above options. Do not include numbers in your answer. If there are periods, include them.";
   }
@@ -67,7 +76,14 @@ async function insertQuestion(questionData) {
   text +=
     "\n\nIMPORTANT: The answer must be a numeric value with units. If needed, use decimal form or a simplified fraction. Always include units, and do not add extra text.";
 
-  // If an image is detected, the user will drag/drop it manually.
+  return text;
+}
+
+async function insertQuestion(questionData) {
+  const { hasImage } = questionData;
+  const mode = questionData.mode === "study" ? "study" : "assist";
+  const shouldObserveForAutofill = mode === "assist";
+  const text = buildPromptText(questionData, mode);
 
   return new Promise((resolve, reject) => {
     const inputArea = document.getElementById("prompt-textarea");
@@ -84,13 +100,23 @@ async function insertQuestion(questionData) {
           if (sendButton) {
             if (hasImage) {
               alert(
-                "ChatGPT: Image detected. Drag the image from the opened tab, then press Enter or click Send."
+                mode === "study"
+                  ? "ChatGPT: Image detected in Study Mode. Drag the image from the opened tab, then press Enter or click Send."
+                  : "ChatGPT: Image detected. Drag the image from the opened tab, then press Enter or click Send."
               );
-              armManualSendObserver(inputArea, sendButton);
+              armManualSendObserver(
+                inputArea,
+                sendButton,
+                shouldObserveForAutofill
+              );
               resolve();
             } else {
               sendButton.click();
-              startObserving();
+              if (shouldObserveForAutofill) {
+                startObserving();
+              } else {
+                chrome.runtime.sendMessage({ type: "closeImageTab" });
+              }
               resolve();
             }
           } else {
@@ -104,14 +130,16 @@ async function insertQuestion(questionData) {
   });
 }
 
-function armManualSendObserver(inputArea, sendButton) {
+function armManualSendObserver(inputArea, sendButton, shouldObserveForAutofill) {
   const startOnce = (() => {
     let started = false;
     return () => {
       if (started) return;
       started = true;
       chrome.runtime.sendMessage({ type: "closeImageTab" });
-      startObserving();
+      if (shouldObserveForAutofill) {
+        startObserving();
+      }
       inputArea.removeEventListener("keydown", onKeydown, true);
       if (sendButton) {
         sendButton.removeEventListener("click", onClick, true);
@@ -150,7 +178,7 @@ function startObserving() {
     }
   }, 180000);
 
-  observer = new MutationObserver((mutations) => {
+  observer = new MutationObserver(() => {
     if (hasResponded) return;
 
     const messages = document.querySelectorAll(
@@ -199,11 +227,11 @@ function startObserving() {
     } catch (e) {
       const isGenerating = latestMessage.querySelector(".result-streaming");
       if (!isGenerating && Date.now() - observationStartTime > 30000) {
-        const responseText = latestMessage.textContent.trim();
+        const fallbackText = latestMessage.textContent.trim();
         try {
           const jsonPattern =
             /\{[\s\S]*?"answer"[\s\S]*?"explanation"[\s\S]*?\}/;
-          const jsonMatch = responseText.match(jsonPattern);
+          const jsonMatch = fallbackText.match(jsonPattern);
 
           if (jsonMatch && !hasResponded) {
             hasResponded = true;

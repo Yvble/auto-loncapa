@@ -1,4 +1,26 @@
-let lastImageOpenedSrc = null;
+﻿let lastImageOpenedSrc = null;
+
+const SETTINGS_DEFAULTS = {
+  mode: "assist",
+  autoSubmit: false,
+};
+
+function getExtensionSettings() {
+  return new Promise((resolve) => {
+    if (!chrome?.storage?.sync) {
+      resolve(SETTINGS_DEFAULTS);
+      return;
+    }
+
+    chrome.storage.sync.get(SETTINGS_DEFAULTS, (settings) => {
+      if (chrome.runtime.lastError) {
+        resolve(SETTINGS_DEFAULTS);
+        return;
+      }
+      resolve(settings);
+    });
+  });
+}
 
 function addHelperButton() {
   const btn = document.createElement("button");
@@ -16,7 +38,10 @@ function addHelperButton() {
   btn.style.cursor = "pointer";
   btn.style.boxShadow = "0 4px 12px rgba(0,0,0,0.25)";
   btn.addEventListener("click", async () => {
-    const qData = await parseQuestion();
+    const settings = await getExtensionSettings();
+    const mode = settings.mode === "study" ? "study" : "assist";
+
+    const qData = await parseQuestion(mode);
     if (!qData) return;
 
     if (qData.hasImage && qData.imageSrc) {
@@ -36,7 +61,7 @@ function addHelperButton() {
   document.body.appendChild(btn);
 }
 
-async function parseQuestion() {
+async function parseQuestion(mode = "assist") {
   const container = findProblemContainer();
   if (!container) {
     alert("No problem found on this page.");
@@ -53,6 +78,7 @@ async function parseQuestion() {
   const imageData = await extractQuestionImageData(container);
 
   return {
+    mode,
     type: detectQuestionType(container, options),
     question: questionText,
     options,
@@ -266,27 +292,38 @@ function openImageTabOnce(src) {
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === "chatGPTResponse") {
-    try {
-      const response = JSON.parse(message.response);
-      const filled = fillAnswer(response.answer);
-      if (!filled) {
-        alert(
-          `Answer: ${JSON.stringify(response.answer)}\n\nExplanation: ${response.explanation}\n\nAuto-fill failed. Please fill manually.`
-        );
-        sendResponse({ received: true });
-        return true;
+  if (message.type !== "chatGPTResponse") return false;
+
+  getExtensionSettings()
+    .then((settings) => {
+      if (settings.mode === "study") {
+        sendResponse({ received: true, skipped: "study_mode" });
+        return;
       }
 
-      maybeAutoSubmit().then(() => {
-        sendResponse({ received: true });
-      });
-      return true;
-    } catch (e) {
+      try {
+        const response = JSON.parse(message.response);
+        const filled = fillAnswer(response.answer);
+        if (!filled) {
+          alert(
+            `Answer: ${JSON.stringify(response.answer)}\n\nExplanation: ${response.explanation}\n\nAuto-fill failed. Please fill manually.`
+          );
+          sendResponse({ received: true });
+          return;
+        }
+
+        maybeAutoSubmit().then(() => {
+          sendResponse({ received: true });
+        });
+      } catch (e) {
+        sendResponse({ received: false });
+      }
+    })
+    .catch(() => {
       sendResponse({ received: false });
-      return false;
-    }
-  }
+    });
+
+  return true;
 });
 
 if (isLoncapaPage()) {
@@ -502,13 +539,14 @@ function maybeAutoSubmit() {
       return;
     }
 
-    chrome.storage.sync.get({ autoSubmit: false }, (settings) => {
+    chrome.storage.sync.get(SETTINGS_DEFAULTS, (settings) => {
       if (chrome.runtime.lastError) {
         resolve();
         return;
       }
 
-      if (settings.autoSubmit) {
+      const assistMode = settings.mode !== "study";
+      if (assistMode && settings.autoSubmit) {
         // Give the page a moment to apply filled values before submitting.
         setTimeout(() => {
           clickSubmitIfAvailable();
@@ -518,3 +556,4 @@ function maybeAutoSubmit() {
     });
   });
 }
+

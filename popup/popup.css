@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --primary-color: #171717;
   --secondary-color: #242424;
   --text-color: #f3f3f3;
@@ -121,4 +121,30 @@ footer {
 
 .status {
   color: #9cc1ff;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.field-label {
+  font-size: 13px;
+  color: var(--muted-color);
+}
+
+.field select {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: #1b1b1b;
+  color: var(--text-color);
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.toggle.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
